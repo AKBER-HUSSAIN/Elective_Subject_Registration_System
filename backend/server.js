@@ -7,6 +7,27 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+const User = require("./models/User");
+const bcrypt = require("bcrypt");
+
+async function createAdmin() {
+    const existing = await User.findOne({ role: "admin" });
+    if (!existing) {
+        const hashed = await bcrypt.hash("admin123", 10);
+        const admin = new User({
+            rollNo: "admin001",
+            name: "System Admin",
+            semester: 0,
+            oddEven: "odd",
+            password: hashed,
+            role: "admin"
+        });
+        await admin.save();
+        console.log("✅ Default admin created: admin001 / admin123");
+    }
+}
+createAdmin();
+
 // Routes
 const authRoutes = require("./routes/authRoutes");
 const electiveRoutes = require("./routes/electiveRoutes");
