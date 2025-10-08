@@ -34,15 +34,42 @@ const electiveRoutes = require("./routes/electiveRoutes");
 const registrationRoutes = require("./routes/registrationRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 
+// Root endpoint
+app.get("/", (req, res) => {
+    res.status(200).json({
+        status: "OK",
+        message: "Elective Subject Registration System API",
+        endpoints: {
+            health: "/health",
+            auth: "/api/auth",
+            electives: "/api/electives",
+            registrations: "/api/registrations",
+            reports: "/api/reports"
+        }
+    });
+});
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "OK", message: "Server is running" });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/electives", electiveRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/reports", reportRoutes);
 
 // MongoDB connect
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log("✅ MongoDB Connected"))
-    .catch((err) => console.error("❌ DB Error:", err));
+if (process.env.MONGO_URI) {
+    mongoose.connect(process.env.MONGO_URI)
+        .then(() => console.log("✅ MongoDB Connected"))
+        .catch((err) => {
+            console.error("❌ DB Error:", err);
+            console.log("⚠️ Continuing without MongoDB for testing...");
+        });
+} else {
+    console.log("⚠️ No MONGO_URI found, continuing without MongoDB...");
+}
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
