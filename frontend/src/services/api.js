@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-    baseURL: "http://localhost:5000/api", // backend URL
+    baseURL: "https://elective-registration-system.onrender.com/", // backend URL
 });
 
 // attach token automatically
