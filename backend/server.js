@@ -32,10 +32,12 @@ createAdmin();
 const authRoutes = require("./routes/authRoutes");
 const electiveRoutes = require("./routes/electiveRoutes");
 const registrationRoutes = require("./routes/registrationRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/electives", electiveRoutes);
 app.use("/api/registrations", registrationRoutes);
+app.use("/api/reports", reportRoutes);
 
 // MongoDB connect
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })

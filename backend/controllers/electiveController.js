@@ -23,10 +23,10 @@ exports.getElectives = async (req, res) => {
     try {
         const { semester, oddEven } = req.query;
         let filter = {};
-        if (semester) filter.semester = semester;
+        if (semester) filter.semester = parseInt(semester);
         if (oddEven) filter.oddEven = oddEven;
 
-        const electives = await Elective.find(filter);
+        const electives = await Elective.find(filter).sort({ semester: 1, name: 1 });
         res.json(electives);
     } catch (err) {
         res.status(500).json({ msg: "Server error", error: err.message });
@@ -54,6 +54,26 @@ exports.deleteElective = async (req, res) => {
         if (!deleted) return res.status(404).json({ msg: "Elective not found" });
 
         res.json({ msg: "Elective deleted" });
+    } catch (err) {
+        res.status(500).json({ msg: "Server error", error: err.message });
+    }
+};
+
+// Get electives for a specific student (filtered by semester & oddEven)
+exports.getElectivesForStudent = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+        const User = require("../models/User");
+
+        const student = await User.findById(studentId);
+        if (!student) return res.status(404).json({ msg: "Student not found" });
+
+        const electives = await Elective.find({
+            semester: student.semester,
+            oddEven: student.oddEven
+        }).sort({ name: 1 });
+
+        res.json(electives);
     } catch (err) {
         res.status(500).json({ msg: "Server error", error: err.message });
     }
