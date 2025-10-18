@@ -1,6 +1,6 @@
 const express = require("express");
 const { registerElective, getMyRegistration, getAllRegistrations } = require("../controllers/registrationController");
-const { protect, adminOnly } = require("../middleware/authMiddleware");
+const { protect, adminOnly, branchAccess } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -9,6 +9,6 @@ router.post("/", protect, registerElective);
 router.get("/me", protect, getMyRegistration);
 
 // Admin endpoint
-router.get("/", protect, adminOnly, getAllRegistrations);
+router.get("/", protect, adminOnly, branchAccess, getAllRegistrations);
 
 module.exports = router;

@@ -10,29 +10,38 @@ app.use(cors());
 const User = require("./models/User");
 const bcrypt = require("bcrypt");
 
-async function createAdmin() {
-    const existing = await User.findOne({ role: "admin" });
-    if (!existing) {
-        const hashed = await bcrypt.hash("admin123", 10);
-        const admin = new User({
-            rollNo: "admin001",
-            name: "System Admin",
-            semester: 0,
-            oddEven: "odd",
-            password: hashed,
-            role: "admin"
-        });
-        await admin.save();
-        console.log("✅ Default admin created: admin001 / admin123");
+async function createAdmins() {
+    const branches = [
+        "CSE", "IT", "EEE", "ECE", "Mechanical", "Civil",
+        "Chemical", "Bio-Technology", "AIML", "CSE-AIML", "CET", "AIDS"
+    ];
+
+    for (const branch of branches) {
+        const existing = await User.findOne({ role: "admin", branch });
+        if (!existing) {
+            const hashed = await bcrypt.hash("admin123", 10);
+            const admin = new User({
+                rollNo: `admin${branch.toLowerCase().replace(/[^a-z0-9]/g, '')}001`,
+                name: `${branch} Admin`,
+                semester: 0,
+                section: "Admin",
+                password: hashed,
+                role: "admin",
+                branch: branch
+            });
+            await admin.save();
+            console.log(`✅ ${branch} admin created: admin${branch.toLowerCase().replace(/[^a-z0-9]/g, '')}001 / admin123`);
+        }
     }
 }
-createAdmin();
+createAdmins();
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
 const electiveRoutes = require("./routes/electiveRoutes");
 const registrationRoutes = require("./routes/registrationRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 // Root endpoint
 app.get("/", (req, res) => {
@@ -58,6 +67,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/electives", electiveRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/admin", adminRoutes);
 
 // MongoDB connect
 if (process.env.MONGO_URI) {

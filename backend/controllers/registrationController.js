@@ -14,8 +14,8 @@ exports.registerElective = async (req, res) => {
         const elective = await Elective.findById(electiveId);
         if (!elective) return res.status(404).json({ msg: "Elective not found" });
 
-        // Check if elective matches student's semester & oddEven
-        if (student.semester !== elective.semester || student.oddEven !== elective.oddEven) {
+        // Check if elective matches student's semester and branch
+        if (student.semester !== elective.semester || student.branch !== elective.branch) {
             return res.status(400).json({ msg: "Elective not valid for this student" });
         }
 
@@ -47,10 +47,19 @@ exports.getMyRegistration = async (req, res) => {
     }
 };
 
-// Admin: view all registrations
+// Admin: view all registrations for their branch
 exports.getAllRegistrations = async (req, res) => {
     try {
-        const regs = await Registration.find().populate("student elective");
+        const branch = req.userBranch; // From middleware
+
+        // Get all students from the admin's branch
+        const students = await User.find({ branch, role: "student" });
+        const studentIds = students.map(student => student._id);
+
+        // Get registrations for students in this branch, sorted by roll number
+        const regs = await Registration.find({ student: { $in: studentIds } })
+            .populate("student elective")
+            .sort({ "student.rollNo": 1 });
         res.json(regs);
     } catch (err) {
         res.status(500).json({ msg: "Server error", error: err.message });

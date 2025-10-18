@@ -5,18 +5,34 @@ const Elective = require("../models/Elective");
 // Export one file per elective
 exports.exportPerElective = async (req, res) => {
     try {
+        console.log("Export per elective called with query:", req.query);
         const { electiveId } = req.query;
 
         if (!electiveId) {
+            console.log("No elective ID provided");
             return res.status(400).json({ msg: "Elective ID is required" });
         }
 
+        console.log("Looking for elective with ID:", electiveId);
         const elective = await Elective.findById(electiveId);
         if (!elective) {
+            console.log("Elective not found");
             return res.status(404).json({ msg: "Elective not found" });
         }
 
+        console.log("Found elective:", elective.name);
+
+        // Ensure the elective belongs to the admin's branch
+        if (elective.branch !== req.userBranch) {
+            console.log("Elective does not belong to admin's branch");
+            return res.status(403).json({ msg: "Access denied: Elective not in your branch" });
+        }
+
         const regs = await Registration.find({ elective: electiveId }).populate("student");
+        console.log("Found registrations:", regs.length);
+
+        // Sort registrations by roll number
+        regs.sort((a, b) => a.student.rollNo.localeCompare(b.student.rollNo));
 
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet(elective.name);
@@ -25,7 +41,7 @@ exports.exportPerElective = async (req, res) => {
             { header: "Roll No", key: "rollNo", width: 15 },
             { header: "Name", key: "name", width: 25 },
             { header: "Semester", key: "semester", width: 10 },
-            { header: "Odd/Even", key: "oddEven", width: 10 },
+            { header: "Section", key: "section", width: 10 },
         ];
 
         regs.forEach(r => {
@@ -33,12 +49,79 @@ exports.exportPerElective = async (req, res) => {
                 rollNo: r.student.rollNo,
                 name: r.student.name,
                 semester: r.student.semester,
-                oddEven: r.student.oddEven
+                section: r.student.section
             });
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
         res.setHeader("Content-Disposition", `attachment; filename=${elective.code}_enrollments.xlsx`);
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        return res.send(buffer);
+    } catch (err) {
+        res.status(500).json({ msg: "Error generating report", error: err.message });
+    }
+};
+
+// Export one file per elective and section
+exports.exportPerElectiveSection = async (req, res) => {
+    try {
+        console.log("Export per elective section called with query:", req.query);
+        const { electiveId, section } = req.query;
+
+        if (!electiveId || !section) {
+            console.log("Missing required parameters");
+            return res.status(400).json({ msg: "Elective ID and Section are required" });
+        }
+
+        console.log("Looking for elective with ID:", electiveId, "and section:", section);
+        const elective = await Elective.findById(electiveId);
+        if (!elective) {
+            console.log("Elective not found");
+            return res.status(404).json({ msg: "Elective not found" });
+        }
+
+        console.log("Found elective:", elective.name);
+
+        // Ensure the elective belongs to the admin's branch
+        if (elective.branch !== req.userBranch) {
+            console.log("Elective does not belong to admin's branch");
+            return res.status(403).json({ msg: "Access denied: Elective not in your branch" });
+        }
+
+        // Get registrations for the elective and filter by section
+        const regs = await Registration.find({ elective: electiveId })
+            .populate({
+                path: "student",
+                match: { section: section }
+            })
+            .then(registrations => registrations.filter(reg => reg.student !== null));
+
+        console.log("Found registrations for section:", regs.length);
+
+        // Sort registrations by roll number
+        regs.sort((a, b) => a.student.rollNo.localeCompare(b.student.rollNo));
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet(`${elective.name} - Section ${section}`);
+
+        sheet.columns = [
+            { header: "Roll No", key: "rollNo", width: 15 },
+            { header: "Name", key: "name", width: 25 },
+            { header: "Semester", key: "semester", width: 10 },
+            { header: "Section", key: "section", width: 10 },
+        ];
+
+        regs.forEach(r => {
+            sheet.addRow({
+                rollNo: r.student.rollNo,
+                name: r.student.name,
+                semester: r.student.semester,
+                section: r.student.section
+            });
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.setHeader("Content-Disposition", `attachment; filename=${elective.code}_Section${section}_enrollments.xlsx`);
         res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         return res.send(buffer);
     } catch (err) {
@@ -64,6 +147,10 @@ exports.exportMultiSheet = async (req, res) => {
 
         for (let elective of electives) {
             const regs = await Registration.find({ elective: elective._id }).populate("student");
+
+            // Sort registrations by roll number
+            regs.sort((a, b) => a.student.rollNo.localeCompare(b.student.rollNo));
+
             const sheet = workbook.addWorksheet(`${elective.code}`);
 
             sheet.columns = [

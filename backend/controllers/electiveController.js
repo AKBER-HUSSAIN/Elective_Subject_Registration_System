@@ -1,15 +1,19 @@
 const Elective = require("../models/Elective");
 
+// Helper function to determine if semester is odd or even
+const isOddSemester = (semester) => semester % 2 === 1;
+
 // Add new elective
 exports.addElective = async (req, res) => {
     try {
-        const { name, code, description, semester, oddEven } = req.body;
+        const { name, code, description, semester } = req.body;
+        const branch = req.userBranch; // From middleware
 
         // Check duplicate elective code
         const existing = await Elective.findOne({ code });
         if (existing) return res.status(400).json({ msg: "Elective code already exists" });
 
-        const elective = new Elective({ name, code, description, semester, oddEven });
+        const elective = new Elective({ name, code, description, semester, branch });
         await elective.save();
 
         res.status(201).json({ msg: "Elective added successfully", elective });
@@ -18,13 +22,14 @@ exports.addElective = async (req, res) => {
     }
 };
 
-// Get all electives (optionally filter by semester & oddEven)
+// Get all electives for admin's branch (optionally filter by semester)
 exports.getElectives = async (req, res) => {
     try {
-        const { semester, oddEven } = req.query;
-        let filter = {};
+        const { semester } = req.query;
+        const branch = req.userBranch; // From middleware
+
+        let filter = { branch };
         if (semester) filter.semester = parseInt(semester);
-        if (oddEven) filter.oddEven = oddEven;
 
         const electives = await Elective.find(filter).sort({ semester: 1, name: 1 });
         res.json(electives);
@@ -37,9 +42,13 @@ exports.getElectives = async (req, res) => {
 exports.updateElective = async (req, res) => {
     try {
         const { id } = req.params;
-        const updated = await Elective.findByIdAndUpdate(id, req.body, { new: true });
-        if (!updated) return res.status(404).json({ msg: "Elective not found" });
+        const branch = req.userBranch; // From middleware
 
+        // Ensure the elective belongs to the admin's branch
+        const elective = await Elective.findOne({ _id: id, branch });
+        if (!elective) return res.status(404).json({ msg: "Elective not found or access denied" });
+
+        const updated = await Elective.findByIdAndUpdate(id, req.body, { new: true });
         res.json({ msg: "Elective updated", updated });
     } catch (err) {
         res.status(500).json({ msg: "Server error", error: err.message });
@@ -50,16 +59,20 @@ exports.updateElective = async (req, res) => {
 exports.deleteElective = async (req, res) => {
     try {
         const { id } = req.params;
-        const deleted = await Elective.findByIdAndDelete(id);
-        if (!deleted) return res.status(404).json({ msg: "Elective not found" });
+        const branch = req.userBranch; // From middleware
 
+        // Ensure the elective belongs to the admin's branch
+        const elective = await Elective.findOne({ _id: id, branch });
+        if (!elective) return res.status(404).json({ msg: "Elective not found or access denied" });
+
+        const deleted = await Elective.findByIdAndDelete(id);
         res.json({ msg: "Elective deleted" });
     } catch (err) {
         res.status(500).json({ msg: "Server error", error: err.message });
     }
 };
 
-// Get electives for a specific student (filtered by semester & oddEven)
+// Get electives for a specific student (filtered by semester and branch)
 exports.getElectivesForStudent = async (req, res) => {
     try {
         const studentId = req.user.id;
@@ -70,7 +83,7 @@ exports.getElectivesForStudent = async (req, res) => {
 
         const electives = await Elective.find({
             semester: student.semester,
-            oddEven: student.oddEven
+            branch: student.branch
         }).sort({ name: 1 });
 
         res.json(electives);
