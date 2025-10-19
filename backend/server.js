@@ -74,7 +74,11 @@ app.use("/api/admin", adminRoutes);
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Catch-all handler: send back React's index.html file for any non-API routes
-app.get('*', (req, res) => {
+app.use((req, res) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+    }
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
