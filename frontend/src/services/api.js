@@ -2,7 +2,7 @@ import axios from "axios";
 
 const API = axios.create({
     baseURL: import.meta.env.PROD
-        ? "https://elective-backend.onrender.com/api"  // Update this with your actual backend URL
+        ? "https://elective-registration-system-tdeq.onrender.com/"  // Update this with your actual backend URL
         : "http://localhost:5000/api", // Development
 });
 
