@@ -44,17 +44,15 @@ const registrationRoutes = require("./routes/registrationRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
-// Root endpoint
+// Root endpoint - serve React app
 app.get("/", (req, res) => {
-    res.status(200).json({
-        status: "OK",
-        message: "Elective Subject Registration System API",
-        endpoints: {
-            health: "/health",
-            auth: "/api/auth",
-            electives: "/api/electives",
-            registrations: "/api/registrations",
-            reports: "/api/reports"
+    const indexPath = path.join(__dirname, '../frontend/dist/index.html');
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            console.error('Error serving index.html:', err);
+            res.status(500).json({
+                error: 'Frontend not built. Please run: cd frontend && npm run build'
+            });
         }
     });
 });
@@ -71,7 +69,8 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 
 // Serve static files from the React app build directory
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+const frontendPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendPath));
 
 // Catch-all handler: send back React's index.html file for any non-API routes
 app.use((req, res) => {
@@ -79,7 +78,16 @@ app.use((req, res) => {
     if (req.path.startsWith('/api/')) {
         return res.status(404).json({ error: 'API endpoint not found' });
     }
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+
+    const indexPath = path.join(frontendPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            console.error('Error serving index.html:', err);
+            res.status(500).json({
+                error: 'Frontend not built. Please run: cd frontend && npm run build'
+            });
+        }
+    });
 });
 
 // MongoDB connect
